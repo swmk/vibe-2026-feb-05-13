@@ -1,6 +1,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import "./App.css";
+import FeedbackForm from "./components/FeedbackForm";
 
 const phrases = [
   "Hello world",
@@ -116,9 +117,11 @@ function App() {
         </div>
       )}
       {showAnswer && <div className="answer">Correct Answer: {currentPhrase}</div>}
+      <FeedbackForm />
       <footer>Powered by Gemini CLI</footer>
     </div>
   );
 }
 
 export default App;
+
