@@ -12,6 +12,7 @@ This project is a simple "listen and type" web application designed to help user
 *   **Verification:** The application will compare the user's input with the correct phrase and provide feedback.
 *   **Show Answer:** A button will be available to reveal the correct answer.
 *   **Modern UI:** The application will have a clean and modern user interface, with a visually balanced layout and polished styles.
+*   **Image Upload & OCR:** Users can upload an image containing text. The app uses Tesseract.js (client-side OCR) to extract words from the image. Each extracted word becomes a practice item in the phrases list. Users can reset to default phrases at any time.
 
 ## Plan for Current Request
 

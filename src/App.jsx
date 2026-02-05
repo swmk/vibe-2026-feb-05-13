@@ -1,9 +1,10 @@
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
+import Tesseract from "tesseract.js";
 import "./App.css";
 import FeedbackForm from "./components/FeedbackForm";
 
-const phrases = [
+const defaultPhrases = [
   "Hello world",
   "How are you",
   "What is your name",
@@ -11,11 +12,9 @@ const phrases = [
   "React is a JavaScript library",
 ];
 
-// Helper to get a random phrase
-const getRandomPhrase = () => phrases[Math.floor(Math.random() * phrases.length)];
-
 function App() {
-  const [currentPhrase, setCurrentPhrase] = useState(getRandomPhrase()); // Initialize with a random phrase
+  const [phrases, setPhrases] = useState(defaultPhrases);
+  const [currentPhrase, setCurrentPhrase] = useState(() => defaultPhrases[Math.floor(Math.random() * defaultPhrases.length)]);
   const [userInput, setUserInput] = useState("");
   const [isCorrect, setIsCorrect] = useState(null);
   const [showAnswer, setShowAnswer] = useState(false);
@@ -23,6 +22,10 @@ function App() {
   const [startTime, setStartTime] = useState(null);
   const [elapsedTime, setElapsedTime] = useState(0);
   const [timerRunning, setTimerRunning] = useState(false);
+  const [isProcessingImage, setIsProcessingImage] = useState(false);
+  const [ocrProgress, setOcrProgress] = useState(0);
+  const [uploadedImageUrl, setUploadedImageUrl] = useState(null);
+  const fileInputRef = useRef(null);
 
   // Effect for timer updates
   useEffect(() => {
@@ -37,13 +40,71 @@ function App() {
 
   // Function to select a new phrase and reset state, wrapped in useCallback
   const selectNewPhrase = useCallback(() => {
-    setCurrentPhrase(getRandomPhrase());
+    setCurrentPhrase(phrases[Math.floor(Math.random() * phrases.length)]);
     setUserInput("");
     setIsCorrect(null);
     setShowAnswer(false);
     setStartTime(null);
     setElapsedTime(0);
     setTimerRunning(false);
+  }, [phrases]);
+
+  // Handle image upload and OCR processing
+  const handleImageUpload = useCallback(async (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // Create preview URL
+    const imageUrl = URL.createObjectURL(file);
+    setUploadedImageUrl(imageUrl);
+    setIsProcessingImage(true);
+    setOcrProgress(0);
+
+    try {
+      const result = await Tesseract.recognize(file, "eng", {
+        logger: (m) => {
+          if (m.status === "recognizing text") {
+            setOcrProgress(Math.round(m.progress * 100));
+          }
+        },
+      });
+
+      // Extract words from recognized text
+      const text = result.data.text;
+      const words = text
+        .split(/\s+/)
+        .map((word) => word.replace(/[^a-zA-Z]/g, "").trim())
+        .filter((word) => word.length > 0);
+
+      if (words.length > 0) {
+        setPhrases(words);
+        setCurrentPhrase(words[Math.floor(Math.random() * words.length)]);
+        setUserInput("");
+        setIsCorrect(null);
+        setShowAnswer(false);
+        setStartTime(null);
+        setElapsedTime(0);
+        setTimerRunning(false);
+      }
+    } catch (error) {
+      console.error("OCR Error:", error);
+    } finally {
+      setIsProcessingImage(false);
+      setOcrProgress(0);
+    }
+  }, []);
+
+  // Reset to default phrases
+  const handleResetPhrases = useCallback(() => {
+    setPhrases(defaultPhrases);
+    setCurrentPhrase(defaultPhrases[Math.floor(Math.random() * defaultPhrases.length)]);
+    setUploadedImageUrl(null);
+    setUserInput("");
+    setIsCorrect(null);
+    setShowAnswer(false);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
   }, []);
 
   const handleVerify = () => {
@@ -86,6 +147,44 @@ function App() {
   return (
     <div className="container">
       <h1 className="title">Listen and Type</h1>
+
+      {/* Image Upload Section */}
+      <div className="upload-section">
+        <label htmlFor="image-upload" className="upload-label">
+          Upload an image to extract words:
+        </label>
+        <input
+          ref={fileInputRef}
+          id="image-upload"
+          type="file"
+          accept="image/*"
+          onChange={handleImageUpload}
+          disabled={isProcessingImage}
+          className="file-input"
+        />
+        {uploadedImageUrl && (
+          <div className="image-preview">
+            <img src={uploadedImageUrl} alt="Uploaded" />
+          </div>
+        )}
+        {isProcessingImage && (
+          <div className="ocr-progress">
+            <p>Processing image... {ocrProgress}%</p>
+            <div className="progress-bar">
+              <div className="progress-fill" style={{ width: `${ocrProgress}%` }}></div>
+            </div>
+          </div>
+        )}
+        {phrases !== defaultPhrases && (
+          <div className="phrases-info">
+            <p>{phrases.length} words extracted from image</p>
+            <button onClick={handleResetPhrases} className="secondary small">
+              Reset to Default
+            </button>
+          </div>
+        )}
+      </div>
+
       <p className="phrase-display">
         {isSpeaking ? "(Speaking...)" : "Click 'Speak' to hear the phrase."}
       </p>
