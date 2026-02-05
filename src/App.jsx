@@ -67,6 +67,7 @@ function App() {
         )}
         {showAnswer && <div className="show-answer">{currentPhrase}</div>}
       </div>
+      <footer>Powered by Gemini CLI</footer>
     </div>
   );
 }
