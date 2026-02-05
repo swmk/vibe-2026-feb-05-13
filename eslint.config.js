@@ -5,8 +5,16 @@ import reactHooks from "eslint-plugin-react-hooks";
 
 export default [
   {
+    ignores: ["dist/", "node_modules/"]
+  },
+  {
     files: ["**/*.js", "**/*.jsx"],
     languageOptions: {
+      parserOptions: {
+        ecmaFeatures: {
+          jsx: true,
+        },
+      },
       globals: {
         ...globals.browser,
       },
@@ -21,5 +29,11 @@ export default [
       "react/prop-types": "off",
       "react/react-in-jsx-scope": "off",
     },
+    settings: {
+      react: {
+        version: "detect", // Automatically detect the React version
+      },
+    },
   },
 ];
+

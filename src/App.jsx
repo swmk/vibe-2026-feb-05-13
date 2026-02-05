@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import "./App.css";
 
 const phrases = [
@@ -10,20 +10,25 @@ const phrases = [
   "React is a JavaScript library",
 ];
 
+// Helper to get a random phrase
+const getRandomPhrase = () => phrases[Math.floor(Math.random() * phrases.length)];
+
 function App() {
-  const [currentPhrase, setCurrentPhrase] = useState("");
+  const [currentPhrase, setCurrentPhrase] = useState(getRandomPhrase()); // Initialize with a random phrase
   const [userInput, setUserInput] = useState("");
   const [isCorrect, setIsCorrect] = useState(null);
   const [showAnswer, setShowAnswer] = useState(false);
+  const [isSpeaking, setIsSpeaking] = useState(false);
 
-  useEffect(() => {
-    handleNext();
+
+
+  // Function to select a new phrase and reset state, wrapped in useCallback
+  const selectNewPhrase = useCallback(() => {
+    setCurrentPhrase(getRandomPhrase());
+    setUserInput("");
+    setIsCorrect(null);
+    setShowAnswer(false);
   }, []);
-
-  const speakPhrase = () => {
-    const utterance = new SpeechSynthesisUtterance(currentPhrase);
-    speechSynthesis.speak(utterance);
-  };
 
   const handleVerify = () => {
     setIsCorrect(userInput.toLowerCase() === currentPhrase.toLowerCase());
@@ -33,40 +38,59 @@ function App() {
     setShowAnswer(true);
   };
 
-  const handleNext = () => {
-    const randomIndex = Math.floor(Math.random() * phrases.length);
-    setCurrentPhrase(phrases[randomIndex]);
-    setUserInput("");
-    setIsCorrect(null);
-    setShowAnswer(false);
+  const handleNextClick = () => {
+    selectNewPhrase();
   };
 
+  const handleSpeakClick = useCallback(() => {
+    if (currentPhrase && !isSpeaking) {
+      const utterance = new SpeechSynthesisUtterance(currentPhrase);
+      utterance.lang = 'en-US'; // Ensure English voice
+      utterance.onstart = () => { // Set isSpeaking to true when speech actually starts
+        setIsSpeaking(true);
+      };
+      utterance.onend = () => {
+        setIsSpeaking(false);
+      };
+      utterance.onerror = () => {
+        setIsSpeaking(false);
+      };
+      speechSynthesis.speak(utterance);
+    }
+  }, [currentPhrase, isSpeaking]);
+
   return (
-    <div className="app-container">
-      <div className="card">
-        <h1 className="title">Listen and Type</h1>
-        <div className="button-group">
-          <button onClick={speakPhrase}>Speak</button>
-          <button onClick={handleNext}>Next</button>
-        </div>
+    <div className="container">
+      <h1 className="title">Listen and Type</h1>
+      <p className="phrase-display">
+        {isSpeaking ? "(Speaking...)" : "Click 'Speak' to hear the phrase."}
+      </p>
+
+      <div className="button-group">
+        <button onClick={handleSpeakClick} className="primary" disabled={!currentPhrase || isSpeaking}>Speak</button>
+        <button onClick={handleNextClick} className="secondary">Next Phrase</button>
+      </div>
+
+      <div className="input-section">
         <input
           type="text"
-          className="text-input"
           value={userInput}
           onChange={(e) => setUserInput(e.target.value)}
           placeholder="Type what you hear"
+          disabled={!currentPhrase || isSpeaking}
         />
-        <div className="button-group" style={{ marginTop: "20px" }}>
-          <button onClick={handleVerify}>Verify</button>
-          <button onClick={handleShowAnswer}>Show Answer</button>
+        <div className="button-group">
+          <button onClick={handleVerify} className="primary" disabled={!currentPhrase || !userInput || isSpeaking}>Verify</button>
+          <button onClick={handleShowAnswer} className="warning" disabled={!currentPhrase || isSpeaking}>Show Answer</button>
         </div>
-        {isCorrect !== null && (
-          <div className={`feedback ${isCorrect ? "correct" : "incorrect"}`}>
-            {isCorrect ? "Correct!" : "Incorrect, try again."}
-          </div>
-        )}
-        {showAnswer && <div className="show-answer">{currentPhrase}</div>}
       </div>
+
+      {isCorrect !== null && (
+        <div className={`feedback ${isCorrect ? "correct" : "incorrect"}`}>
+          {isCorrect ? "Correct!" : "Incorrect, try again."}
+        </div>
+      )}
+      {showAnswer && <div className="answer">Correct Answer: {currentPhrase}</div>}
       <footer>Powered by Gemini CLI</footer>
     </div>
   );
